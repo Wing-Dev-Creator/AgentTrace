@@ -1,4 +1,4 @@
-"""Simple JSONL trace writer (MVP scaffold)."""
+"""JSONL trace writer — delegates I/O to the native backend (Rust or pure-Python fallback)."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional
 
 from .config import get_root_dir
 from .redaction import Redactor, RedactionConfig
-from .storage import Storage
+from ._backend import NativeTraceWriter
 
 
 @dataclass
@@ -41,7 +41,8 @@ class Tracer:
         self._seq = 0
         self._span_seq = 0
         self._redactor = Redactor(redaction)
-        self._storage = Storage(db_path=root_dir)
+        self._root = root_dir or get_root_dir()
+        self._writer: Optional[NativeTraceWriter] = None
 
     def __enter__(self) -> "Tracer":
         self.start()
@@ -51,12 +52,7 @@ class Tracer:
         self.finish(error=exc)
 
     def start(self) -> str:
-        self._storage.create_trace(
-            trace_id=self.trace_id, 
-            name=self.trace_name, 
-            project=self.project,
-            start_ts=time.time()
-        )
+        self._writer = NativeTraceWriter(self.trace_id, str(self._root))
         self.emit(
             "trace_start",
             payload={"trace_name": self.trace_name, "project": self.project},
@@ -64,18 +60,13 @@ class Tracer:
         return self.trace_id
 
     def finish(self, error: Exception | None = None) -> None:
-        status = "ok"
         if error is None:
             self.emit("trace_end", payload={"status": "ok"})
         else:
-            status = "error"
             self.emit("trace_end", payload={"status": "error", "error": repr(error)})
-            
-        self._storage.update_trace(
-            trace_id=self.trace_id,
-            end_ts=time.time(),
-            status=status
-        )
+        if self._writer:
+            self._writer.finish()
+            self._writer = None
 
     def new_span_id(self) -> str:
         self._span_seq += 1
@@ -96,21 +87,21 @@ class Tracer:
         self._seq += 1
         safe_attrs = self._redactor.redact(attrs or {})
         safe_payload = self._redactor.redact(payload or {})
-        
         ts_unix_ns = time.time_ns()
-        
-        self._storage.add_event(
-            trace_id=self.trace_id,
-            seq=self._seq,
-            ts_unix_ns=ts_unix_ns,
-            kind=kind,
-            level=level,
-            attrs=safe_attrs,
-            payload=safe_payload,
-            span_id=span_id,
-            parent_span_id=parent_span_id
-        )
-        
+
+        if self._writer:
+            self._writer.emit(
+                self.trace_id,
+                self._seq,
+                ts_unix_ns,
+                kind,
+                span_id,
+                parent_span_id,
+                level,
+                json.dumps(safe_attrs, ensure_ascii=False, default=str),
+                json.dumps(safe_payload, ensure_ascii=False, default=str),
+            )
+
         return Event(
             trace_id=self.trace_id,
             seq=self._seq,

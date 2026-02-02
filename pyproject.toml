@@ -16,11 +16,10 @@ ui = ["fastapi", "uvicorn"]
 langchain = ["langchain", "langgraph", "langchain-core"]
 
 [build-system]
-requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["maturin>=1.5"]
+build-backend = "maturin"
 
-[tool.setuptools]
-packages = ["agenttrace"]
-
-[tool.setuptools.package-data]
-agenttrace = ["web/*.html"]
+[tool.maturin]
+module-name = "agenttrace_native"
+python-source = "."
+include = ["agenttrace/web/*.html"]

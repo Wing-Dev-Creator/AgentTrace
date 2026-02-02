@@ -1,0 +1,19 @@
+[package]
+name = "agenttrace-core"
+version = "0.1.0"
+edition = "2021"
+authors = ["AgentTrace Contributors"]
+description = "Core Rust library for high-performance agent telemetry"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+crc32c = "0.6"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+anyhow = "1.0"
+thiserror = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+walkdir = "2.3" # Useful for list_traces
+
+[dev-dependencies]
+tempfile = "3.3"

@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "crates/agenttrace-core",
+    "crates/agenttrace-native",
+]
+resolver = "2"

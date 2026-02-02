@@ -87,7 +87,13 @@ We are building a comprehensive observability platform.
 
 We are in early development! PRs are welcome.
 
+See [ARCHITECTURE.md](ARCHITECTURE.md) for a system overview.
+
+### Development Setup
+
 1.  Clone the repo.
-2.  Install dependencies: `pip install -e .[ui,langchain]`
-3.  Run the example: `python examples/langchain_basic.py`
-4.  Start the UI: `agenttrace ui`
+2.  **Python:** Install dependencies: `pip install -e .`
+3.  **Rust:** (Optional) If working on core: `cargo test`
+4.  Run the example: `python examples/langchain_basic.py`
+5.  Start the UI: `agenttrace ui`
+

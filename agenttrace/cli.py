@@ -73,7 +73,9 @@ def main() -> None:
     if args.cmd == "ls":
         if reader:
             for t in reader.list_traces():
-                print(f"{t['id']}\t{t['name']}\t({t['event_count']} events)\t[{t['status']}]")
+                status = t.get('status', '')
+                suffix = f"\t[{status}]" if status else ""
+                print(f"{t['id']}\t{t['name']}\t({t['event_count']} events){suffix}")
         return
 
     if args.cmd == "inspect":
@@ -85,13 +87,14 @@ def main() -> None:
         return
 
     if args.cmd == "search":
-        if reader:
+        if reader and hasattr(reader, "search"):
             results = reader.search(args.query)
             for r in results:
-                print(f"{r['trace_id'][:8]}... | {r['kind']} | {r['trace_name']}")
-                # print snippet of payload
-                print(f"  {str(r['payload'])[:100]}...")
+                print(f"{r['trace_id'][:8]}... | {r['kind']} | {r.get('trace_name', '')}")
+                print(f"  {str(r.get('payload', ''))[:100]}...")
                 print()
+        else:
+            print("Search is not available with the current storage backend.")
         return
 
     if args.cmd == "diff":

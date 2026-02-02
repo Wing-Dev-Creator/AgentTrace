@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(pip install:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(python -c \"from agenttrace import trace; t = trace\\(''cli-test''\\); t.start\\(\\); t.user_input\\(''hello''\\); t.finish\\(\\); print\\(t.trace_id\\)\")",
+      "Bash(agenttrace ls:*)",
+      "Bash(agenttrace inspect:*)"
     ]
   }
 }
