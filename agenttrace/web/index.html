@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgentTrace UI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .json-pre { white-space: pre-wrap; word-break: break-all; font-family: monospace; font-size: 0.8rem; }
+    </style>
+</head>
+<body class="bg-gray-50 h-screen flex overflow-hidden">
+
+    <!-- Sidebar: Trace List -->
+    <div class="w-80 bg-white border-r border-gray-200 flex flex-col">
+        <div class="p-4 border-b border-gray-200 bg-gray-100">
+            <h1 class="font-bold text-gray-700 text-lg">AgentTrace</h1>
+            <p class="text-xs text-gray-500">Local Telemetry</p>
+        </div>
+        <div id="trace-list" class="flex-1 overflow-y-auto p-2 space-y-2">
+            <!-- Traces will be loaded here -->
+            <div class="text-center text-gray-400 mt-10">Loading traces...</div>
+        </div>
+        <div class="p-4 border-t border-gray-200 text-xs text-center text-gray-400">
+            <button onclick="loadTraces()" class="hover:text-gray-600 underline">Refresh</button>
+        </div>
+    </div>
+
+    <!-- Main Content: Timeline -->
+    <div class="flex-1 flex flex-col h-full overflow-hidden">
+        <div id="trace-header" class="p-4 bg-white border-b border-gray-200 shadow-sm z-10 hidden">
+            <h2 id="trace-title" class="text-xl font-bold text-gray-800"></h2>
+            <div id="trace-meta" class="text-sm text-gray-500 mt-1 font-mono"></div>
+        </div>
+
+        <div id="timeline-container" class="flex-1 overflow-y-auto p-8 bg-gray-50 relative">
+            <div id="empty-state" class="flex flex-col items-center justify-center h-full text-gray-400">
+                <svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                <p class="text-lg">Select a trace to view details</p>
+            </div>
+            <div id="timeline" class="max-w-4xl mx-auto space-y-6 hidden">
+                <!-- Events will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTraceId = null;
+
+        async function loadTraces() {
+            try {
+                const res = await fetch('/api/traces');
+                const traces = await res.json();
+                const list = document.getElementById('trace-list');
+                list.innerHTML = '';
+                
+                // Sort by timestamp desc (newest first)
+                traces.sort((a, b) => b.ts - a.ts);
+
+                traces.forEach(t => {
+                    const el = document.createElement('div');
+                    el.className = `p-3 rounded cursor-pointer hover:bg-blue-50 transition border border-transparent hover:border-blue-100 group`;
+                    el.onclick = () => loadTraceDetail(t.id);
+                    el.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <span class="font-medium text-gray-700 truncate">${t.name || 'Untitled Trace'}</span>
+                            <span class="text-xs text-gray-400 bg-gray-100 px-1 rounded">${t.event_count}</span>
+                        </div>
+                        <div class="text-xs text-gray-500 mt-1 font-mono truncate" title="${t.id}">${t.id.substring(0, 8)}...</div>
+                        <div class="text-xs text-gray-400 mt-1">${new Date(t.ts * 1000).toLocaleString()}</div>
+                    `;
+                    el.id = `trace-item-${t.id}`;
+                    list.appendChild(el);
+                });
+            } catch (err) {
+                console.error(err);
+                document.getElementById('trace-list').innerHTML = '<div class="text-red-500 p-4 text-sm">Failed to load traces. Is the server running?</div>';
+            }
+        }
+
+        async function loadTraceDetail(traceId) {
+            currentTraceId = traceId;
+            
+            // Update active state in sidebar
+            document.querySelectorAll('#trace-list > div').forEach(d => {
+                d.classList.remove('bg-blue-100', 'border-blue-300');
+                if (d.id === `trace-item-${traceId}`) d.classList.add('bg-blue-100', 'border-blue-300');
+            });
+
+            const timeline = document.getElementById('timeline');
+            const header = document.getElementById('trace-header');
+            const empty = document.getElementById('empty-state');
+            
+            timeline.innerHTML = '<div class="text-center py-10">Loading events...</div>';
+            timeline.classList.remove('hidden');
+            header.classList.remove('hidden');
+            empty.classList.add('hidden');
+
+            try {
+                const res = await fetch(`/api/traces/${traceId}`);
+                const data = await res.json();
+                
+                // Header info
+                document.getElementById('trace-title').textContent = data.trace_name || 'Untitled Trace';
+                document.getElementById('trace-meta').textContent = `ID: ${traceId} • Project: ${data.project || 'N/A'}`;
+
+                // Render Timeline
+                timeline.innerHTML = '';
+                
+                // Process events to link request/responses or just flat list
+                // For MVP: Flat list with visual cues
+                
+                data.events.forEach(event => {
+                    const card = document.createElement('div');
+                    card.className = "relative pl-8 border-l-2 border-gray-200 pb-2 last:border-0";
+                    
+                    // Icon logic
+                    let iconBg = 'bg-gray-400';
+                    let iconChar = '•';
+                    let title = event.kind;
+                    let content = JSON.stringify(event.payload, null, 2);
+                    
+                    if (event.kind === 'user_input') {
+                        iconBg = 'bg-blue-500';
+                        iconChar = '👤';
+                        title = 'User Input';
+                    } else if (event.kind === 'llm_request') {
+                        iconBg = 'bg-green-500';
+                        iconChar = '🤖';
+                        title = 'LLM Request';
+                    } else if (event.kind === 'llm_response') {
+                        iconBg = 'bg-green-600';
+                        iconChar = '💬';
+                        title = 'LLM Response';
+                    } else if (event.kind === 'tool_call') {
+                        iconBg = 'bg-purple-500';
+                        iconChar = '🛠️';
+                        title = 'Tool Call';
+                    } else if (event.kind === 'tool_result') {
+                        iconBg = 'bg-purple-600';
+                        iconChar = '✅';
+                        title = 'Tool Result';
+                    } else if (event.level === 'error') {
+                        iconBg = 'bg-red-500';
+                        iconChar = '⚠️';
+                        title = 'Error';
+                    }
+
+                    card.innerHTML = `
+                        <div class="absolute -left-[9px] top-0 w-5 h-5 rounded-full ${iconBg} text-white flex items-center justify-center text-xs shadow-sm ring-4 ring-gray-50">
+                            ${iconChar}
+                        </div>
+                        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-bold text-sm uppercase tracking-wider ${iconBg.replace('bg-', 'text-')}">${title}</span>
+                                <span class="text-xs text-gray-400 font-mono">${new Date(event.ts_unix_ns / 1000000).toLocaleTimeString()}</span>
+                            </div>
+                            <div class="overflow-x-auto bg-gray-50 p-2 rounded border border-gray-100">
+                                <pre class="json-pre text-gray-700">${content}</pre>
+                            </div>
+                        </div>
+                    `;
+                    timeline.appendChild(card);
+                });
+
+            } catch (err) {
+                console.error(err);
+                timeline.innerHTML = '<div class="text-red-500 text-center">Failed to load events</div>';
+            }
+        }
+
+        // Initial load
+        loadTraces();
+    </script>
+</body>
+</html>
