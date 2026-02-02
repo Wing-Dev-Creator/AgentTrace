@@ -13,3 +13,7 @@ agenttrace-core = { path = "../agenttrace-core" }
 pyo3 = { version = "0.20", features = ["extension-module"] }
 serde_json = "1.0"
 pythonize = "0.20"
+
+# Explicitly point back to workspace to fix maturin confusion
+[package.metadata.maturin]
+name = "agenttrace._core"

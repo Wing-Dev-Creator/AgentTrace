@@ -1,52 +1,51 @@
-# AgentTrace Architecture
+# AgentTrace Architecture (Current)
 
-AgentTrace is a hybrid Python/Rust observability platform for AI agents.
+AgentTrace is a Python‑first telemetry recorder with an optional Rust native backend.
 
-## Directory Structure
+## Core idea
 
-```text
-C:\Users\Wing\Dev\Rust\AgentTrace\
-├── agenttrace/           # Python SDK & CLI (User-facing)
-│   ├── tracer.py         # Main recording API
-│   ├── replayer.py       # Deterministic replay engine (uses TraceReader)
-│   ├── server.py         # FastAPI backend for UI
-│   ├── web/              # Single-page React-style UI
-│   ├── reader.py         # JSONL reader (native or fallback)
-│   ├── _backend.py       # Native fallback dispatcher
-│   ├── _native.py        # Pure-Python JSONL fallback
-│   └── storage.py        # Experimental SQLite backend (not default)
-├── crates/               # Rust Components (High-performance)
-│   └── agenttrace-core/  # Core library (Event types, CRC, Storage IO)
-│   └── agenttrace-native/# PyO3 bindings (agenttrace_native)
-├── examples/             # Usage examples
-└── pyproject.toml        # Python project config
-```
+An agent run is recorded as a **timeline of structured events**.  
+Each event is a JSON object written to `events.jsonl` (optionally CRC‑suffixed).
 
 ## Components
 
-### 1. Python SDK (`agenttrace/`)
-The primary interface for users.
-*   **Tracer:** Instruments code to capture `user_input`, `llm_request`, `tool_call`.
-*   **Storage (MVP):** JSONL + optional CRC, written by the native backend (Rust) or the pure-Python fallback.
-*   **Reader:** Uses the native backend when available, falls back to JSONL parsing in Python.
-*   **UI:** A local visualization tool (`agenttrace ui`) built with FastAPI + raw HTML/JS.
-*   **SQLite:** Present as an experimental backend (`storage.py`) but not wired into the default path.
+### Python SDK (`agenttrace/`)
+- **Tracer** writes events and handles redaction.
+- **Reader** loads traces through the native backend (or Python fallback).
+- **CLI** provides `ls / inspect / replay / diff / export`.
+- **UI** runs locally via FastAPI and static HTML.
 
-### 2. Rust Core (`crates/agenttrace-core/`)
-A standalone library for high-performance telemetry handling.
-*   **Role:** Defines the canonical event structure and binary/structured file formats.
-*   **Format:** Supports a custom JSONL+CRC32C format for data integrity.
-*   **Python Bridge:** Bound via PyO3 in `agenttrace-native` (module `agenttrace_native`).
+### Native backend (Rust)
+- **agenttrace-core**: event model + JSONL+CRC writing/reading.
+- **agenttrace-native**: PyO3 bindings exposing `NativeTraceWriter` and `NativeTraceReader`.
 
-## Data Flow
+### Fallback backend (Python)
+If the native module is missing, AgentTrace falls back to a pure‑Python JSONL writer/reader.
 
-1.  **Recording:** User Code -> `Tracer` (Python) -> Native writer (Rust or fallback) -> JSONL (+ optional CRC)
-2.  **Viewing:** User -> CLI/Browser -> `TraceReader` -> JSONL -> JSON Output
-3.  **Replaying:** User -> `Replayer` -> `TraceReader` -> Mocked I/O
+## Data flow
 
-## Development
+1) **Recording**  
+User code → `Tracer` → Native writer (Rust) or fallback → JSONL file
 
-*   **Python:** `pip install -e .` (Requires Python 3.9+)
-*   **Rust:** `cargo build` (Requires Rust 1.70+)
+2) **Viewing**  
+CLI/UI → `TraceReader` → JSONL events → output/visualization
+
+3) **Replay**  
+`Replayer` uses `TraceReader` to mock inputs and LLM responses
+
+## Storage layout
 
 ```
+~/.agenttrace/traces/<trace_id>/events.jsonl
+```
+
+CRC suffix is optional:
+
+```
+<json>\t<crc32c>
+```
+
+## Experimental: SQLite backend
+
+`agenttrace/storage.py` contains a SQLite implementation for future search/analytics.  
+It is not wired into the default path yet.

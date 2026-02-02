@@ -1,6 +1,6 @@
 [workspace]
 members = [
     "crates/agenttrace-core",
-    "crates/agenttrace-native",
+    "crates/agenttrace-py",
 ]
 resolver = "2"

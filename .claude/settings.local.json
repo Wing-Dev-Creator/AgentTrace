@@ -9,7 +9,11 @@
       "Bash(agenttrace inspect:*)",
       "Bash(cargo check:*)",
       "Bash(cargo test:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(du:*)",
+      "Bash(python:*)",
+      "Bash(wc:*)",
+      "Bash(maturin develop:*)"
     ]
   }
 }

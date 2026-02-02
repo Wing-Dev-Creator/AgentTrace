@@ -74,6 +74,14 @@ agenttrace diff <trace_a> <trace_b>
 agenttrace export <trace_id> --out trace.json
 ```
 
+## Docs
+
+- `docs/FORMAT.md` — JSONL event format and CRC suffix
+- `docs/BACKENDS.md` — native vs fallback storage behavior
+- `docs/CLI.md` — CLI commands and flags
+- `docs/ENV.md` — environment variables
+- `docs/TESTING.md` — how to run tests and native builds
+
 ## 🗺️ Roadmap & Progress
 
 We are building a comprehensive observability platform.

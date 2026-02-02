@@ -21,5 +21,6 @@ build-backend = "maturin"
 
 [tool.maturin]
 module-name = "agenttrace_native"
+manifest-path = "crates/agenttrace-native/Cargo.toml"
 python-source = "."
 include = ["agenttrace/web/*.html"]
