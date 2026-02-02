@@ -30,6 +30,12 @@ agenttrace replay <trace_id> --kind llm_request --kind tool_call
 agenttrace replay <trace_id> --span s1
 ```
 
+Notes:
+
+- `replay` is a **timeline view** (read‑only) today.
+- Deterministic re‑execution is tracked in `agenttrace.replayer` and will be
+  expanded in a future release.
+
 ### Diff two traces
 
 ```powershell

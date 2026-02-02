@@ -19,6 +19,7 @@ The fallback Python reader accepts both plain JSONL and CRC‑suffixed lines.
 
 Required fields:
 
+- `schema_version` (int, current: 1)
 - `trace_id` (string, UUID hex)
 - `seq` (int, monotonic per trace)
 - `ts_unix_ns` (int, unix nanoseconds)
@@ -40,17 +41,31 @@ Optional fields:
 - `tool_call`, `tool_result`
 - `error`
 - `span_start`, `span_end`
+- `retrieval_start`, `retrieval_end` (LangChain retrievers)
+
+### Payload conventions (non‑schema, but expected)
+
+- `trace_start.payload`: `{ "trace_name": str, "project": str | null }`
+- `span_start.payload`: `{ "name": str, "inputs": object }`
+- `span_end.payload`: `{ "outputs": object }` plus optional `duration_ms`
+- `span_end.payload.auto_closed`: `true` when the tracer closes spans on exit
+- `llm_request.payload`: prompt/messages and optional model metadata
+- `llm_response.payload`: response content/generations
+- `tool_call.payload`: tool arguments/input
+- `tool_result.payload`: tool output/result
+- `retrieval_start.payload`: `{ "query": str }`
+- `retrieval_end.payload`: `{ "documents": [...] }`
 
 ## Example line (no CRC)
 
 ```json
-{"trace_id":"abc...","seq":1,"ts_unix_ns":1700000000000000000,"kind":"trace_start","span_id":null,"parent_span_id":null,"level":"info","attrs":{},"payload":{"trace_name":"demo","project":"my-agent"}}
+{"schema_version":1,"trace_id":"abc...","seq":1,"ts_unix_ns":1700000000000000000,"kind":"trace_start","span_id":null,"parent_span_id":null,"level":"info","attrs":{},"payload":{"trace_name":"demo","project":"my-agent"}}
 ```
 
 ## Example line (CRC suffix)
 
 ```text
-{"trace_id":"abc...","seq":1,"ts_unix_ns":1700000000000000000,"kind":"trace_start","span_id":null,"parent_span_id":null,"level":"info","attrs":{},"payload":{"trace_name":"demo","project":"my-agent"}}	1a2b3c4d
+{"schema_version":1,"trace_id":"abc...","seq":1,"ts_unix_ns":1700000000000000000,"kind":"trace_start","span_id":null,"parent_span_id":null,"level":"info","attrs":{},"payload":{"trace_name":"demo","project":"my-agent"}}	1a2b3c4d
 ```
 
 ## Compatibility

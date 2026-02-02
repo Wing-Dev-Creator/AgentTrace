@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+__all__ = ["Replayer", "ReplayError"]
+
 from typing import Any, Dict, List, Optional
 
 from .reader import TraceReader
@@ -41,8 +43,12 @@ class Replayer:
         while self._cursor < len(self.events):
             evt = self.events[self._cursor]
             self._cursor += 1
-            if evt["kind"] == "user_input":
-                return evt["payload"]["text"]
+            if evt.get("kind") == "user_input":
+                payload = evt.get("payload") or {}
+                text = payload.get("text")
+                if text is not None:
+                    return text
+                raise ReplayError(f"user_input event at seq {evt.get('seq')} missing 'text' in payload")
         
         raise ReplayError("No more user input found in trace")
 

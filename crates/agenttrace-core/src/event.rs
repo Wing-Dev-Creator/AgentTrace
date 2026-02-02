@@ -4,6 +4,8 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Event {
+    #[serde(default = "default_schema_version")]
+    pub schema_version: u32,
     pub trace_id: String,
     pub seq: u64,
     pub ts_unix_ns: u64,
@@ -18,14 +20,17 @@ pub struct Event {
 }
 
 impl Event {
+    /// Convenience constructor for tests. Sets ts_unix_ns to current time,
+    /// level to "info", and leaves span fields as None.
     pub fn new(trace_id: String, seq: u64, kind: String, payload: Value) -> Self {
         use std::time::{SystemTime, UNIX_EPOCH};
         let ts = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_nanos() as u64;
 
         Self {
+            schema_version: default_schema_version(),
             trace_id,
             seq,
             ts_unix_ns: ts,
@@ -37,4 +42,8 @@ impl Event {
             payload,
         }
     }
+}
+
+fn default_schema_version() -> u32 {
+    1
 }

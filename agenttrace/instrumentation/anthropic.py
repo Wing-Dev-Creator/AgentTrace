@@ -5,6 +5,7 @@ import time
 from typing import Any, Callable
 
 from agenttrace.tracer import get_current_tracer
+from agenttrace.pricing import estimate_cost
 
 def instrument():
     try:
@@ -53,8 +54,19 @@ def _wrap_create(original_create: Callable):
                     "output_tokens": response.usage.output_tokens
                 } if response.usage else {}
                 
+                cost = estimate_cost(
+                    model,
+                    usage.get("input_tokens", 0),
+                    usage.get("output_tokens", 0)
+                )
+                
                 tracer.llm_response(
-                    {"content": content, "usage": usage, "duration_ms": duration_ms},
+                    {
+                        "content": content, 
+                        "usage": usage, 
+                        "duration_ms": duration_ms,
+                        "cost_usd": cost
+                    },
                     span_id=span_id
                 )
             else:
@@ -66,6 +78,6 @@ def _wrap_create(original_create: Callable):
             return response
         except Exception as e:
             tracer.error(e, span_id=span_id)
-            raise e
+            raise
             
     return wrapper

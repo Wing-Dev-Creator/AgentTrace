@@ -1,7 +1,10 @@
-import json
+"""FastAPI server for the AgentTrace visualization UI."""
+
+from __future__ import annotations
+
 import importlib.resources as resources
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
@@ -9,36 +12,50 @@ from fastapi.responses import HTMLResponse, FileResponse
 from .reader import TraceReader
 
 app = FastAPI()
-reader = TraceReader()
+_reader: Optional[TraceReader] = None
+
+
+def _get_reader() -> TraceReader:
+    global _reader
+    if _reader is None:
+        _reader = TraceReader()
+    return _reader
+
 
 @app.get("/api/traces")
-def list_traces():
-    return reader.list_traces()
+def list_traces() -> List[Dict[str, Any]]:
+    return _get_reader().list_traces()
+
 
 @app.get("/api/traces/{trace_id}")
-def get_trace(trace_id: str):
-    trace = reader.get_trace(trace_id)
+def get_trace(trace_id: str) -> Dict[str, Any]:
+    trace = _get_reader().get_trace(trace_id)
     if not trace:
         raise HTTPException(status_code=404, detail="Trace not found")
     return trace
 
+
 @app.get("/api/search")
-def search_traces(q: str):
+def search_traces(q: str) -> List[Dict[str, Any]]:
     if not q:
         return []
-    return reader.search(q)
+    return _get_reader().search(q)
+
 
 @app.get("/")
 def serve_ui():
-    # Serve the single page app
     try:
         html_path = resources.files("agenttrace.web").joinpath("index.html")
-    except Exception:
+    except (AttributeError, ModuleNotFoundError, TypeError):
         html_path = Path(__file__).parent / "web" / "index.html"
     if not html_path.exists():
-        return HTMLResponse(content="<h1>UI not found</h1><p>Ensure agenttrace/web/index.html exists.</p>", status_code=404)
+        return HTMLResponse(
+            content="<h1>UI not found</h1><p>Ensure agenttrace/web/index.html exists.</p>",
+            status_code=404,
+        )
     return FileResponse(html_path)
 
-def start_server(host="127.0.0.1", port=8000):
+
+def start_server(host: str = "127.0.0.1", port: int = 8000) -> None:
     import uvicorn
     uvicorn.run(app, host=host, port=port)

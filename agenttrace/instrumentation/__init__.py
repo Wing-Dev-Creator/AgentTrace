@@ -1,10 +1,13 @@
 """Top-level instrumentation entry point."""
 
+__all__ = ["instrument"]
+
 from .openai import instrument as instrument_openai
 from .anthropic import instrument as instrument_anthropic
 from .langchain import instrument as instrument_langchain
 
-def instrument(openai=True, anthropic=True, langchain=True):
+
+def instrument(openai: bool = True, anthropic: bool = True, langchain: bool = True) -> None:
     """Enable auto-instrumentation for supported libraries."""
     if openai:
         instrument_openai()

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+__all__ = ["Tracer", "Event", "trace", "get_current_tracer"]
+
 import json
 import time
 import uuid
@@ -21,6 +23,7 @@ def get_current_tracer() -> Optional["Tracer"]:
 
 @dataclass
 class Event:
+    schema_version: int
     trace_id: str
     seq: int
     ts_unix_ns: int
@@ -48,6 +51,8 @@ class Tracer:
         self._redactor = Redactor(redaction)
         self._root = root_dir or get_root_dir()
         self._writer: Optional[NativeTraceWriter] = None
+        self._schema_version = 1
+        self._open_spans: Dict[str, int] = {}
         self._token = None
 
     def __enter__(self) -> "Tracer":
@@ -70,6 +75,14 @@ class Tracer:
         return self.trace_id
 
     def finish(self, error: Exception | None = None) -> None:
+        # Auto-close any open spans for consistency
+        if self._open_spans:
+            for span_id, start_ns in list(self._open_spans.items()):
+                payload = {"auto_closed": True}
+                duration_ms = (time.time_ns() - start_ns) / 1_000_000
+                payload["duration_ms"] = duration_ms
+                self.emit("span_end", payload=payload, span_id=span_id)
+            self._open_spans.clear()
         if error is None:
             self.emit("trace_end", payload={"status": "ok"})
         else:
@@ -113,7 +126,15 @@ class Tracer:
                 json.dumps(safe_payload, ensure_ascii=False, default=str),
             )
 
+        if kind == "span_start" and span_id:
+            self._open_spans[span_id] = ts_unix_ns
+        if kind == "span_end" and span_id:
+            start_ns = self._open_spans.pop(span_id, None)
+            if start_ns is not None and isinstance(safe_payload, dict):
+                safe_payload.setdefault("duration_ms", (ts_unix_ns - start_ns) / 1_000_000)
+
         return Event(
+            schema_version=self._schema_version,
             trace_id=self.trace_id,
             seq=self._seq,
             ts_unix_ns=ts_unix_ns,
@@ -139,6 +160,21 @@ class Tracer:
 
     def tool_result(self, payload: Dict[str, Any], span_id: Optional[str] = None, parent_span_id: Optional[str] = None) -> Event:
         return self.emit("tool_result", payload, span_id=span_id, parent_span_id=parent_span_id)
+
+    def retrieval(self, query: str, documents: list[Dict[str, Any]], span_id: Optional[str] = None, parent_span_id: Optional[str] = None) -> Event:
+        """
+        Log a RAG retrieval operation.
+        
+        Args:
+            query: The search query used.
+            documents: List of retrieved docs. Each should ideally have 'page_content' and 'metadata'.
+        """
+        return self.emit(
+            "retrieval", 
+            {"query": query, "documents": documents}, 
+            span_id=span_id, 
+            parent_span_id=parent_span_id
+        )
 
     def error(self, err: Exception, span_id: Optional[str] = None, parent_span_id: Optional[str] = None) -> Event:
         return self.emit("error", {"error": repr(err)}, level="error", span_id=span_id, parent_span_id=parent_span_id)

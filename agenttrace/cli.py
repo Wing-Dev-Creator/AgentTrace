@@ -115,7 +115,9 @@ def main() -> None:
         try:
             reader = TraceReader()
         except Exception as e:
-            pass
+            import sys
+            print(f"Error: could not initialize trace reader: {e}", file=sys.stderr)
+            raise SystemExit(1)
 
     if args.cmd == "ls":
         if reader:

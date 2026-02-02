@@ -81,6 +81,7 @@ agenttrace export <trace_id> --out trace.json
 - `docs/CLI.md` — CLI commands and flags
 - `docs/ENV.md` — environment variables
 - `docs/TESTING.md` — how to run tests and native builds
+- `docs/STATUS.md` — current repo state and next steps
 
 ## 🗺️ Roadmap & Progress
 

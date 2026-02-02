@@ -43,6 +43,7 @@ class NativeTraceWriter:
         payload_json: str,
     ) -> None:
         event = {
+            "schema_version": 1,
             "trace_id": trace_id,
             "seq": seq,
             "ts_unix_ns": ts_unix_ns,
@@ -103,7 +104,7 @@ class NativeTraceReader:
                         meta["event_count"] = sum(
                             1 for ln in f if ln.strip()
                         )
-                except Exception:
+                except (OSError, json.JSONDecodeError, KeyError, ValueError):
                     pass
 
             traces.append(meta)

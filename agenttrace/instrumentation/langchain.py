@@ -1,6 +1,8 @@
 """LangChain auto-instrumentation."""
 
-from typing import Optional
+from __future__ import annotations
+
+from typing import Any, Optional
 
 from agenttrace.tracer import get_current_tracer, Tracer
 from agenttrace.langchain import AgentTraceCallbackHandler
@@ -9,36 +11,57 @@ from agenttrace.langchain import AgentTraceCallbackHandler
 # Standard LangChain handlers are instantiated once, but our Tracer is ephemeral (per context).
 
 class ProxyCallbackHandler(AgentTraceCallbackHandler):
-    def __init__(self):
-        # Initialize internal state
-        self._run_to_span = {}
-        # We don't pass a specific tracer here, the property handles it
+    def __init__(self) -> None:
+        # Initialize internal state only — no super().__init__() since
+        # we dynamically resolve the tracer via property.
+        self._run_to_span: dict[str, str] = {}
 
     @property
     def tracer(self) -> Tracer:
-        # Dynamically resolve the current tracer
         t = get_current_tracer()
         if not t:
-            # Fallback to a dummy tracer or raise? 
-            # Ideally return a dummy that does nothing to avoid crashing user code
-            # if they run outside a 'with trace:' block.
-            return _DummyTracer() 
+            return _DummyTracer()
         return t
-    
+
     @tracer.setter
-    def tracer(self, value):
-        pass # Ignore writes
-
-class _DummyTracer(Tracer):
-    def emit(self, *args, **kwargs): pass
-    def __enter__(self): return self
-    def __exit__(self, *args): pass
+    def tracer(self, value: Any) -> None:
+        pass  # Ignore writes
 
 
-def instrument():
+class _DummyTracer:
+    """No-op tracer used when no active trace context exists."""
+
+    def emit(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def new_span_id(self) -> str:
+        return "noop"
+
+    def llm_request(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def llm_response(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def tool_call(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def tool_result(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def error(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def __enter__(self) -> _DummyTracer:
+        return self
+
+    def __exit__(self, *args: Any) -> None:
+        pass
+
+
+def instrument() -> None:
     try:
-        import langchain
-        from langchain_core.tracers.context import register_configure_hook
+        import langchain  # noqa: F401
     except ImportError:
         return
 

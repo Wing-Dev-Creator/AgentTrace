@@ -32,8 +32,13 @@ impl TraceWriter {
         let json = serde_json::to_string(event)?;
         let crc_val = crc::calculate(json.as_bytes());
         let crc_hex = crc::format_hex(crc_val);
-        
+
         writeln!(self.writer, "{}	{}", json, crc_hex)?;
+        Ok(())
+    }
+
+    /// Flush buffered data to disk without closing the writer.
+    pub fn flush(&mut self) -> Result<()> {
         self.writer.flush()?;
         Ok(())
     }

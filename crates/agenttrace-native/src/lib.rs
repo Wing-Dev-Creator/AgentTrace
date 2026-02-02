@@ -52,6 +52,7 @@ impl NativeTraceWriter {
             .map_err(|e| PyValueError::new_err(format!("payload_json invalid: {e}")))?;
 
         let event = Event {
+            schema_version: 1,
             trace_id,
             seq,
             ts_unix_ns,
@@ -132,7 +133,7 @@ impl NativeTraceReader {
 
         let list = PyList::empty_bound(py);
         for value in &events {
-            list.append(json_to_py(py, value))?;
+            list.append(json_to_py(py, value)?)?;
         }
         Ok(list.into())
     }
@@ -153,35 +154,35 @@ fn agenttrace_native(m: &Bound<'_, pyo3::types::PyModule>) -> PyResult<()> {
 // Helpers
 // ---------------------------------------------------------------------------
 
-fn json_to_py(py: Python<'_>, value: &Value) -> PyObject {
+fn json_to_py(py: Python<'_>, value: &Value) -> PyResult<PyObject> {
     match value {
-        Value::Null => py.None(),
-        Value::Bool(b) => b.into_py(py),
+        Value::Null => Ok(py.None()),
+        Value::Bool(b) => Ok(b.into_py(py)),
         Value::Number(n) => {
             if let Some(i) = n.as_i64() {
-                i.into_py(py)
+                Ok(i.into_py(py))
             } else if let Some(u) = n.as_u64() {
-                u.into_py(py)
+                Ok(u.into_py(py))
             } else if let Some(f) = n.as_f64() {
-                f.into_py(py)
+                Ok(f.into_py(py))
             } else {
-                py.None()
+                Ok(py.None())
             }
         }
-        Value::String(s) => s.into_py(py),
+        Value::String(s) => Ok(s.into_py(py)),
         Value::Array(arr) => {
             let list = PyList::empty_bound(py);
             for item in arr {
-                list.append(json_to_py(py, item)).ok();
+                list.append(json_to_py(py, item)?)?;
             }
-            list.into()
+            Ok(list.into())
         }
         Value::Object(map) => {
             let dict = PyDict::new_bound(py);
             for (k, v) in map {
-                dict.set_item(k, json_to_py(py, v)).ok();
+                dict.set_item(k, json_to_py(py, v)?)?;
             }
-            dict.into()
+            Ok(dict.into())
         }
     }
 }

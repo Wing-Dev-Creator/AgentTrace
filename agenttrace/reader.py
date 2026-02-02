@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+__all__ = ["TraceReader"]
+
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional
 
@@ -46,9 +48,8 @@ class TraceReader:
         """Lazy generator for events in a trace."""
         trace = self.get_trace(trace_id)
         if not trace:
-            return
-        for evt in trace["events"]:
-            yield evt
+            return iter([])
+        yield from trace["events"]
 
     def search(self, query: str) -> List[Dict[str, Any]]:
         """Search for events matching the query across all traces.

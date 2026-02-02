@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+__all__ = ["Redactor", "RedactionConfig", "load_redaction_config"]
+
 import base64
 import re
 from dataclasses import dataclass
