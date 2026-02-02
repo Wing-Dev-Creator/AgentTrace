@@ -55,3 +55,7 @@ class TraceReader:
             return
         for evt in trace["events"]:
             yield evt
+
+    def search(self, query: str) -> List[Dict[str, Any]]:
+        """Search for events matching the query."""
+        return self.storage.search_events(query)

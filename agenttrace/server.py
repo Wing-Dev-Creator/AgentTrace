@@ -1,10 +1,10 @@
 import json
+import importlib.resources as resources
 from pathlib import Path
 from typing import List, Dict, Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
 
 from .reader import TraceReader
 
@@ -25,7 +25,10 @@ def get_trace(trace_id: str):
 @app.get("/")
 def serve_ui():
     # Serve the single page app
-    html_path = Path(__file__).parent / "web" / "index.html"
+    try:
+        html_path = resources.files("agenttrace.web").joinpath("index.html")
+    except Exception:
+        html_path = Path(__file__).parent / "web" / "index.html"
     if not html_path.exists():
         return HTMLResponse(content="<h1>UI not found</h1><p>Ensure agenttrace/web/index.html exists.</p>", status_code=404)
     return FileResponse(html_path)

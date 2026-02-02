@@ -149,3 +149,23 @@ class Storage:
             return trace_data
         finally:
             conn.close()
+
+    def search_events(self, query: str, limit: int = 50) -> List[Dict[str, Any]]:
+        conn = self._get_conn()
+        try:
+            # Simple LIKE search on payload/attrs for MVP
+            # In production, use FTS5
+            sql = """
+                SELECT e.*, t.name as trace_name 
+                FROM events e
+                JOIN traces t ON e.trace_id = t.id
+                WHERE json_extract(e.payload, '$') LIKE ? 
+                   OR json_extract(e.attrs, '$') LIKE ?
+                ORDER BY e.ts_unix_ns DESC
+                LIMIT ?
+            """
+            wildcard = f"%{query}%"
+            cursor = conn.execute(sql, (wildcard, wildcard, limit))
+            return [dict(row) for row in cursor.fetchall()]
+        finally:
+            conn.close()
