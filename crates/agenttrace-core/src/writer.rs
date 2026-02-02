@@ -44,6 +44,12 @@ impl TraceWriter {
     }
 }
 
+impl Drop for TraceWriter {
+    fn drop(&mut self) {
+        let _ = self.writer.flush();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -55,18 +61,18 @@ mod tests {
         let tmp = tempdir()?;
         let trace_id = "test-trace";
         let mut writer = TraceWriter::start(trace_id, tmp.path())?;
-        
+
         let event = Event::new(trace_id.to_string(), 1, "test".to_string(), json!({"foo": "bar"}));
         writer.emit(&event)?;
         writer.finish()?;
-        
+
         let events_file = tmp.path().join(trace_id).join("events.jsonl");
         assert!(events_file.exists());
-        
+
         let content = std::fs::read_to_string(events_file)?;
         assert!(content.contains("\t"));
         assert!(content.contains("test"));
-        
+
         Ok(())
     }
 }

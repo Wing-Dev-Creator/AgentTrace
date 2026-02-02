@@ -1,4 +1,4 @@
-"""SQLite storage backend for AgentTrace."""
+"""Experimental SQLite storage backend for AgentTrace (not default)."""
 
 from __future__ import annotations
 

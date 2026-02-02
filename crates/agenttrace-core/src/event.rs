@@ -6,7 +6,7 @@ use std::collections::HashMap;
 pub struct Event {
     pub trace_id: String,
     pub seq: u64,
-    pub ts_unix_ns: u128,
+    pub ts_unix_ns: u64,
     pub kind: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub span_id: Option<String>,
@@ -23,7 +23,7 @@ impl Event {
         let ts = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
-            .as_nanos();
+            .as_nanos() as u64;
 
         Self {
             trace_id,

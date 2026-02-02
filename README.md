@@ -10,7 +10,7 @@ AgentTrace records every step of your AI agent's execution (prompts, tool calls,
 Debugging AI agents is painful. Text logs are messy. SaaS tools are slow/expensive.
 **AgentTrace** solves this by providing:
 
-*   **🔍 Full Observability:** Capture inputs, LLM requests/responses, tool usage, and errors in structured JSONL (soon binary).
+*   **🔍 Full Observability:** Capture inputs, LLM requests/responses, tool usage, and errors in structured JSONL (CRC optional).
 *   **📺 Visual Timeline:** A beautiful local web UI to inspect traces (no cloud required).
 *   **🔁 Deterministic Replay:** (Coming Soon) Re-run traces with mocked inputs to verify fixes without burning tokens.
 *   **🏎️ High Performance:** Minimal overhead, designed for production telemetry.
@@ -67,7 +67,11 @@ Quickly dump trace data in your terminal.
 agenttrace ls
 agenttrace inspect <trace_id>
 agenttrace replay <trace_id>
+agenttrace replay <trace_id> --step
+agenttrace replay <trace_id> --kind llm_request --kind tool_call
+agenttrace replay <trace_id> --span s1
 agenttrace diff <trace_a> <trace_b>
+agenttrace export <trace_id> --out trace.json
 ```
 
 ## 🗺️ Roadmap & Progress
@@ -92,8 +96,8 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for a system overview.
 ### Development Setup
 
 1.  Clone the repo.
-2.  **Python:** Install dependencies: `pip install -e .`
+2.  **Python:** Install dependencies: `pip install -e .` (requires Rust toolchain)
 3.  **Rust:** (Optional) If working on core: `cargo test`
-4.  Run the example: `python examples/langchain_basic.py`
-5.  Start the UI: `agenttrace ui`
-
+4.  **Native Extension:** `maturin develop --release` to build `agenttrace_native`
+5.  Run the example: `python examples/langchain_basic.py`
+6.  Start the UI: `agenttrace ui`
