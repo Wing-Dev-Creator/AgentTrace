@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import time
 import uuid
+from contextvars import ContextVar
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -13,6 +14,10 @@ from .config import get_root_dir
 from .redaction import Redactor, RedactionConfig
 from ._backend import NativeTraceWriter
 
+_CURRENT_TRACER: ContextVar[Optional["Tracer"]] = ContextVar("current_tracer", default=None)
+
+def get_current_tracer() -> Optional["Tracer"]:
+    return _CURRENT_TRACER.get()
 
 @dataclass
 class Event:
@@ -43,13 +48,18 @@ class Tracer:
         self._redactor = Redactor(redaction)
         self._root = root_dir or get_root_dir()
         self._writer: Optional[NativeTraceWriter] = None
+        self._token = None
 
     def __enter__(self) -> "Tracer":
         self.start()
+        self._token = _CURRENT_TRACER.set(self)
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
         self.finish(error=exc)
+        if self._token:
+            _CURRENT_TRACER.reset(self._token)
+            self._token = None
 
     def start(self) -> str:
         self._writer = NativeTraceWriter(self.trace_id, str(self._root))
@@ -64,6 +74,7 @@ class Tracer:
             self.emit("trace_end", payload={"status": "ok"})
         else:
             self.emit("trace_end", payload={"status": "error", "error": repr(error)})
+
         if self._writer:
             self._writer.finish()
             self._writer = None

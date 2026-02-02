@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  rust-tests:
+    name: Rust tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --workspace
+
+  python-fallback:
+    name: Python tests (pure-Python fallback)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.9", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install pytest
+      - run: pip install -e . --no-build-isolation 2>/dev/null || pip install -e .
+        env:
+          MATURIN_PEP517_ARGS: "--skip-auditwheel"
+        continue-on-error: true
+      # If maturin build fails (no Rust toolchain), install as pure Python
+      - run: |
+          python -c "import agenttrace" || pip install -e . --config-settings="build-args=--skip-auditwheel"
+        continue-on-error: true
+      - run: python -m pytest tests/python/ -v
+
+  python-native:
+    name: Python tests (native Rust extension)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install pytest maturin
+      - run: maturin develop --release
+      - run: python -c "from agenttrace._backend import NATIVE_AVAILABLE; assert NATIVE_AVAILABLE, 'Native extension not loaded'"
+      - run: python -m pytest tests/python/ -v

@@ -7,9 +7,12 @@ from typing import Any, Dict, Optional
 from .tracer import Tracer
 
 try:
-    from langchain.callbacks.base import BaseCallbackHandler
-except Exception:  # pragma: no cover - optional dependency
-    BaseCallbackHandler = object  # type: ignore[assignment]
+    from langchain_core.callbacks import BaseCallbackHandler
+except ImportError:
+    try:
+        from langchain.callbacks.base import BaseCallbackHandler
+    except Exception:  # pragma: no cover - optional dependency
+        BaseCallbackHandler = object  # type: ignore[assignment]
 
 
 class AgentTraceCallbackHandler(BaseCallbackHandler):

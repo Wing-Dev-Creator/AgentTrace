@@ -22,6 +22,12 @@ def get_trace(trace_id: str):
         raise HTTPException(status_code=404, detail="Trace not found")
     return trace
 
+@app.get("/api/search")
+def search_traces(q: str):
+    if not q:
+        return []
+    return reader.search(q)
+
 @app.get("/")
 def serve_ui():
     # Serve the single page app
